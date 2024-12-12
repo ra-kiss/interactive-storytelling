@@ -19,42 +19,61 @@ def main():
 
     st.session_state.setdefault("retrieve_top_k", 5)
 
+    # [Informal, Casual, Formal, Academic]
+    st.session_state.setdefault("formality_level", "Informal")
+
+    if "mood_keywords" not in st.session_state:
+        st.session_state["mood_keywords"] = ''
+
     # OpenAI API init
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
     ### UI Elements
 
-    # Create 3 columns
-    col1, col2, col3 = st.columns([2, 2, 1])
+    # 2 Tabs
+    notepad_tab, chat_tab, settings_tab = st.tabs(["Notepad", "Chat", "Settings"])
 
-    # Save Expander
-    with col1:
-        with st.expander("💾 Save File", expanded=False):
-            st.write("Save the current content to a downloadable file.")
-            filename = st.text_input("Enter filename (with .txt):", value="example.txt")
-            if filename.strip(): 
-                st.download_button(
-                        label="Download File",
-                        data=st.session_state['notepad'],
-                        file_name=filename,
-                        mime="text/plain")
-            else:
-                st.error("Please enter a valid filename.")
+    with notepad_tab:
 
-    # Load Expander
-    with col2:
-        with st.expander("📂 Load File", expanded=False):
-            uploaded_file = st.file_uploader("Upload a .txt file", type=["txt"], accept_multiple_files=False)
-            if uploaded_file is not None:
-                st.session_state['notepad'] = uploaded_file.read().decode("utf-8")
-                st.success("File loaded successfully!")
+        # Create 3 columns
+        col1, col2, col3 = st.columns([2, 2, 1])
 
-    # Clear Button
-    with col3:
-        if st.button("🗑️ Clear Notepad"):
-            st.session_state['notepad'] = ""
+        # Save Expander
+        with col1:
+            with st.expander("💾 Save File", expanded=False):
+                st.write("Save the current content to a downloadable file.")
+                filename = st.text_input("Enter filename (with .txt):", value="example.txt")
+                if filename.strip(): 
+                    st.download_button(
+                            label="Download File",
+                            data=st.session_state['notepad'],
+                            file_name=filename,
+                            mime="text/plain")
+                else:
+                    st.error("Please enter a valid filename.")
 
-    with st.sidebar:
+        # Load Expander
+        with col2:
+            with st.expander("📂 Load File", expanded=False):
+                uploaded_file = st.file_uploader("Upload a .txt file", type=["txt"], accept_multiple_files=False)
+                if uploaded_file is not None:
+                    st.session_state['notepad'] = uploaded_file.read().decode("utf-8")
+                    st.success("File loaded successfully!")
+
+        # Clear Button
+        with col3:
+            if st.button("🗑️ Clear Notepad"):
+                st.session_state['notepad'] = ""
+
+        # Notepad Text Area
+        st.text_area(
+            "",
+            height=400,
+            key="notepad",
+            placeholder="📝 Start writing!"
+        )
+
+    with chat_tab:
         
         # Initialize chat history
         if 'chat_history' not in st.session_state:
@@ -86,6 +105,8 @@ def main():
                 full_prompt = (
                     f"Here is some related context that might help:\n{context_string}\n\n"
                     f"User Query: {prompt}\n\n"
+                    f"Mood Keywords: {mood_keywords}\n\n"
+                    f"Please write in an {st.session_state['formality_level']} tone\n\n"
                     f"Assistant:"
                 )
 
@@ -105,37 +126,27 @@ def main():
 
             st.session_state['chat_history'].append({"role": "assistant", "content": response})
 
-    # Notepad Text Area
-    st.text_area(
-        "",
-        height=400,
-        key="notepad",
-        placeholder="📝 Start writing!"
-    )
-
-    with st.expander("⚙️ Advanced Settings", expanded=False):
+    with settings_tab:
         # st.write("Test")
         
         retrieve_top_k = st.number_input(
-            "🗃️ How much context to retrieve? (1-10)",
+            "🗃️ How much context should I retrieve? (1-10)",
             min_value=1,
             max_value=10,
             step=1,
             key="retrieve_top_k"
         )
 
-# Streamed response generator
-def response_generator():
-    response = random.choice(
-        [
-            "Hello there! How can I assist you today?",
-            "Hi, human! Is there anything I can help you with?",
-            "Do you need help?",
-        ]
-    )
-    for word in response.split():
-        yield word + " "
-        time.sleep(0.05)
+        formality_level = st.selectbox(
+            "🎩 How formal would you like the text to be?",
+            options=["Informal", "Casual", "Formal", "Academic"],
+            key="formality_level"
+        )
+
+        mood_keywords = st.text_input(
+            label="😊 Any keywords for mood?",
+            max_chars=200,
+            key="mood_keywords")
 
 if __name__ == "__main__":
     main()
