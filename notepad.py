@@ -105,7 +105,7 @@ def main():
                 full_prompt = (
                     f"Here is some related context that might help:\n{context_string}\n\n"
                     f"User Query: {prompt}\n\n"
-                    f"Mood Keywords: {mood_keywords}\n\n"
+                    f"Mood Keywords: {st.session_state['mood_keywords']}\n\n"
                     f"Please write in an {st.session_state['formality_level']} tone\n\n"
                     f"Assistant:"
                 )
