@@ -1,4 +1,5 @@
 import streamlit as st
+from streamlit_feedback import streamlit_feedback
 from openai import OpenAI
 import random
 import time
@@ -94,6 +95,10 @@ def main():
             for message in st.session_state['chat_history']:
                 with st.chat_message(message["role"]):
                     st.markdown(message["content"])
+                if "feedback" in message:
+                    st.write(f"Feedback: {message['feedback']}")
+                else:
+                    st.write("Feedback: N/A")
 
         # React to user input via OpenAI API
         if prompt := st.chat_input("🗨️ Send a message!"):
@@ -143,6 +148,12 @@ def main():
 
             st.session_state['chat_history'].append({"role": "assistant", "content": response})
 
+            # Feedback form
+            with st.form('form'):
+                streamlit_feedback(feedback_type="thumbs", optional_text_label="[Optional]", align="flex-start", key='fb_k')
+                st.form_submit_button('Save feedback', on_click=fbcb)
+
+
     with settings_tab:
         # st.write("Test")
         
@@ -184,6 +195,11 @@ def main():
             if st.button("Clear Character"):
                 for key in st.session_state["character"]:
                     st.session_state["character"][key] = ""
+
+def fbcb():
+    message_id = len(st.session_state.chat_history) - 1
+    if message_id >= 0:
+        st.session_state.chat_history[message_id]["feedback"] = st.session_state.fb_k
 
 if __name__ == "__main__":
     main()
