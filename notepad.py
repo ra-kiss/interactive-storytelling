@@ -5,6 +5,7 @@ import random
 import time
 import numpy as np
 from retrieval import retrieve
+import json
 
 def main():
     st.set_page_config(layout="wide", initial_sidebar_state="collapsed")
@@ -35,13 +36,15 @@ def main():
     if "mood_keywords" not in st.session_state:
         st.session_state["mood_keywords"] = ''
 
-    if "character" not in st.session_state:
-        st.session_state["character"] = {
+    if "characters" not in st.session_state:
+        st.session_state["characters"] = []  # To store multiple characters
+    if "current_character" not in st.session_state:
+        st.session_state["current_character"] = {
             "Name": "",
             "Age": "",
             "Pronouns": "",
             "Personality": "",
-            "Traits": "",
+            "Traits": ""
         }
 
     # OpenAI API init
@@ -128,6 +131,8 @@ def main():
                         f"Context:\n{context_string}\n\n"
                         f"User Query: {user_input}\n\n"
                         f"Respond in {st.session_state['formality_level']} tone."
+                        f"Keywords: {st.session_state['mood_keywords']}"
+                        f"Characters: {st.session_state['characters']}"
                     )
                     stream = client.chat.completions.create(
                         model=st.session_state["openai_model"],
@@ -183,22 +188,54 @@ def main():
         with st.expander("Character Building", expanded=False):
             st.text("Create a character using the template below:")
 
-            # input fields for character
-            st.session_state["character"]["Name"] = st.text_input("Name", st.session_state["character"]["Name"])
-            st.session_state["character"]["Age"] = st.text_input("Age", st.session_state["character"]["Age"])
-            st.session_state["character"]["Pronouns"] = st.text_input("Pronouns", st.session_state["character"]["Pronouns"])
-            st.session_state["character"]["Personality"] = st.text_area("Personality", st.session_state["character"]["Personality"], height=100)
-            st.session_state["character"]["Traits"] = st.text_area("Traits", st.session_state["character"]["Traits"], height=100)
+            # input fields for current character
+            st.session_state["current_character"]["Name"] = st.text_input("Name", st.session_state["current_character"]["Name"])
+            st.session_state["current_character"]["Age"] = st.text_input("Age", st.session_state["current_character"]["Age"])
+            st.session_state["current_character"]["Pronouns"] = st.text_input("Pronouns", st.session_state["current_character"]["Pronouns"])
+            st.session_state["current_character"]["Personality"] = st.text_area(
+                "Personality", st.session_state["current_character"]["Personality"], height=100
+            )
+            st.session_state["current_character"]["Traits"] = st.text_area(
+                "Traits", st.session_state["current_character"]["Traits"], height=100
+            )
 
             # character summary
-            st.subheader("Character Summary")
-            for key, value in st.session_state["character"].items():
-                st.write(f"**{key}:** {value}")
+            #st.subheader("Character Summary")
+            #for key, value in st.session_state["current_character"].items():
+            #    st.write(f"**{key}:** {value}")
+
+            # add character to list
+            if st.button("Save Character"):
+                # add current character to list of characters
+                st.session_state["characters"].append(st.session_state["current_character"].copy())
+                # clear current character fields
+                for key in st.session_state["current_character"]:
+                    st.session_state["current_character"][key] = ""
 
             # clear all fields
-            if st.button("Clear Character"):
-                for key in st.session_state["character"]:
-                    st.session_state["character"][key] = ""
+            if st.button("Clear Current Character"):
+                for key in st.session_state["current_character"]:
+                    st.session_state["current_character"][key] = ""
+
+        # shows saved characters under character builder
+        st.subheader("Saved Characters")
+        for idx, character in enumerate(st.session_state["characters"]):
+            st.write(f"### Character {idx + 1}")
+            for key, value in character.items():
+                st.write(f"**{key}:** {value}")
+
+        # download the file
+        if st.button("Download Characters File"):
+            with open("characters.json", "w") as file:
+                json.dump(st.session_state["characters"], file, indent=4)
+            st.success("Characters saved to characters.json")
+            file_content = json.dumps(st.session_state["characters"], indent=4)
+            st.download_button(
+                label="Download JSON",
+                data=file_content,
+                file_name="characters.json",
+                mime="application/json"
+            )
 
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
