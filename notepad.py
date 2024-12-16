@@ -3,20 +3,29 @@ from streamlit_feedback import streamlit_feedback
 from openai import OpenAI
 import random
 import time
+import numpy as np
 from retrieval import retrieve
 
 def main():
-    st.set_page_config(layout="wide")
+    st.set_page_config(layout="wide", initial_sidebar_state="collapsed")
     st.markdown('<style>' + open('styles.css').read() + '</style>', unsafe_allow_html=True)
 
     if "notepad" not in st.session_state:
         st.session_state['notepad'] = ""
 
     if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
+        st.session_state["chat_history"] = []
     
     if "openai_model" not in st.session_state:
         st.session_state["openai_model"] = "gpt-3.5-turbo"
+    
+    # Current context and current message content history
+
+    if "cur_msg_context" not in st.session_state:
+        st.session_state["cur_msg_context"] = []
+    
+    if "cur_msg_history" not in st.session_state:
+        st.session_state["cur_msg_history"] = []
 
     st.session_state.setdefault("retrieve_top_k", 5)
 
@@ -40,7 +49,7 @@ def main():
 
     ### UI Elements
 
-    # 2 Tabs
+    # 3 Tabs
     notepad_tab, chat_tab, settings_tab = st.tabs(["Notepad", "Chat", "Settings"])
 
     with notepad_tab:
@@ -84,74 +93,71 @@ def main():
         )
 
     with chat_tab:
-        
-        # Initialize chat history
-        if 'chat_history' not in st.session_state:
-            st.session_state['chat_history'] = []
 
-        # Display chat messages before rendering chat input
+        # Chat messages container
         chat_container = st.container()
         with chat_container:
-            for message in st.session_state['chat_history']:
+            for i, message in enumerate(st.session_state['chat_history']):
                 with st.chat_message(message["role"]):
                     st.markdown(message["content"])
-                #if "feedback" in message:
-                #    st.write(f"Feedback: {message['feedback']}")
-                #else:
-                #    st.write("Feedback: N/A")
 
-        # React to user input via OpenAI API
-        if prompt := st.chat_input("🗨️ Send a message!"):
-            st.session_state['chat_history'].append({"role": "user", "content": prompt})
-            with st.chat_message("user"):
-                st.markdown(prompt)
+        # Chat input
+        user_input = st.chat_input("Send a message!")
+        if user_input:
+            st.session_state['cur_msg_history'] = []
+            # Append user message to chat history
+            st.session_state['chat_history'].append({"role": "user", "content": user_input})
+            with chat_container:
+                with st.chat_message("user"):
+                    st.markdown(user_input)
 
-            with st.chat_message("assistant"):
-                # Call the retrieve function to get relevant context
-                context_results = retrieve(prompt, st.session_state["retrieve_top_k"])
+            # Assistant response
+            with chat_container:
+                with st.chat_message("assistant"):
+                    response_placeholder = st.empty()  # Dynamic response placeholder
 
-                # Format the context into a single string
-                context_string = "\n".join([
-                    f"- Sentence: {result['sentence']} (from '{result['story_title']}')"
-                    for result in context_results
-                ])
+                    # Generate response stream
+                    context_results = retrieve(user_input, st.session_state["retrieve_top_k"])
+                    st.session_state["cur_msg_context"] = context_results
+                    context_string = "\n".join([
+                        f"- Sentence: {result['sentence']} (from '{result['story_title']}')"
+                        for result in context_results
+                    ])
+                    full_prompt = (
+                        f"Context:\n{context_string}\n\n"
+                        f"User Query: {user_input}\n\n"
+                        f"Respond in {st.session_state['formality_level']} tone."
+                    )
+                    stream = client.chat.completions.create(
+                        model=st.session_state["openai_model"],
+                        messages=[{"role": "system", "content": full_prompt}],
+                        stream=True,
+                    )
 
-                # Add character details to the prompt
-                character_description = "\n".join([
-                    f"{key}: {value}" for key, value in st.session_state["character"].items() if value.strip()
-                ])
-                character_section = f"\n\nCharacter Details:\n{character_description}" if character_description else ""
+                    # Dynamically update assistant's response
+                    response_text = ""
+                    for chunk in stream:
+                        chunk_text = chunk.choices[0].delta.content or ""
+                        response_text += chunk_text
+                        response_placeholder.markdown(response_text)
 
-                # Combine everything into the prompt
-                full_prompt = (
-                    f"Here is some related context that might help:\n{context_string}\n\n"
-                    f"User Query: {prompt}\n\n"
-                    f"Mood Keywords: {st.session_state['mood_keywords']}\n\n"
-                    f"Please write in an {st.session_state['formality_level']} tone."
-                    f"{character_section}\n\n"
-                    f"Assistant:"
-                )
+                    # Append response to chat history
+                    st.session_state['chat_history'].append({"role": "assistant", "content": response_text})
 
-                stream = client.chat.completions.create(
-                    model=st.session_state["openai_model"],
-                    messages=[
-                        {"role": m["role"], "content": full_prompt}
-                        for m in st.session_state['chat_history']
-                    ],
-                    stream=True,
-                )
-                response = st.write_stream(stream)
+            # Feedback form placed inside the container directly under assistant's response
+            with chat_container:
+                st.markdown("---")  # Optional visual separator
+                with st.form("feedback_form"):
+                    streamlit_feedback(
+                        feedback_type="thumbs", 
+                        optional_text_label="[Optional]",
+                        align="flex-start",
+                        key="fb_k"
+                    )
+                    st.form_submit_button("Save feedback", on_click=fbcb)
+            
+            init_chat_sidebar()
 
-                with st.sidebar.expander("Retrieved Context", expanded=True):
-                    for result in context_results:
-                        st.write(f"- {result['sentence']} (from '{result['story_title']}')")
-
-            st.session_state['chat_history'].append({"role": "assistant", "content": response})
-
-            # Feedback form
-            with st.form('form'):
-                streamlit_feedback(feedback_type="thumbs", optional_text_label="[Optional]", align="flex-start", key='fb_k')
-                st.form_submit_button('Save feedback', on_click=fbcb)
 
 
     with settings_tab:
@@ -203,29 +209,41 @@ def refine_prompt_with_feedback(feedback, client):
     if not feedback:
         return
 
-    # get the last message
+    # Get the last assistant message
     message_id = len(st.session_state.chat_history) - 1
     if message_id < 0 or st.session_state.chat_history[message_id]["role"] != "assistant":
         return
 
     last_response = st.session_state.chat_history[message_id]["content"]
 
-    # update prompt with feedback
+    # Append old version to history
+    old_version = {
+        "content": last_response, 
+        "feedback": {
+            "score": feedback.get("score", "🤐"),
+            "text": feedback.get("text", "No feedback given")
+        }
+        }
+    st.session_state["cur_msg_history"].append(old_version)
+
+    # Create refined prompt
     refined_prompt = f"The user provided feedback: {feedback}. Please refine the previous response accordingly.\n\n" \
                      f"Previous Response: {last_response}\n\nRefined Response:"
 
-    # call openai api with refined prompt
+    # Call OpenAI API with refined prompt
     response = client.chat.completions.create(
         model=st.session_state["openai_model"],
         messages=[
             {"role": "system", "content": "You are an AI that refines responses based on user feedback."},
-            {"role": "assistant", "content": refined_prompt}
+            {"role": "user", "content": refined_prompt}
         ]
     )
 
-    # extract refined response from api response
+    # Extract refined response
     refined_response = response.choices[0].message.content
-    st.session_state.chat_history.append({"role": "assistant", "content": refined_response})
+
+    # Update the previous assistant message with "(Refined)" tag
+    st.session_state.chat_history[message_id]["content"] = f"**(Refined)** {refined_response}"
 
 # feedback callback
 def fbcb():
@@ -233,6 +251,37 @@ def fbcb():
     if message_id >= 0:
         st.session_state.chat_history[message_id]["feedback"] = st.session_state.fb_k
         refine_prompt_with_feedback(st.session_state.fb_k, client)
+        init_chat_sidebar()
+
+def init_chat_sidebar():    
+    with st.sidebar:
+        st.subheader("🕒 Feedback History")
+        if not st.session_state["cur_msg_history"]:
+            st.write("Nothing here yet :(")
+        else:
+            for idx, message in enumerate(st.session_state["cur_msg_history"]):
+                # st.warning(f"{idx, message}")
+                expander_label = ""
+                if idx == 0:
+                    expander_label = "Initial Message"
+                else:
+                    expander_label = f"Revision {idx+1}"
+                
+                with st.expander(expander_label):
+                    formatted_feedback = f"{message['feedback']['score']} {message['feedback']['text']}"
+                    st.caption(f"🤖 {message['content']}")
+                    st.caption(formatted_feedback)
+
+        st.subheader("📚 Retrieved Context")
+        if not st.session_state["cur_msg_context"]:
+            st.write("Nothing here yet :(")
+        else:
+            for result in st.session_state["cur_msg_context"]:
+                with st.expander(f"{result['sentence']}"):
+                    st.caption(f'from "{result["story_title"]}"')
+
+
+
 
 if __name__ == "__main__":
     main()
