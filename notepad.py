@@ -25,6 +25,15 @@ def main():
     if "mood_keywords" not in st.session_state:
         st.session_state["mood_keywords"] = ''
 
+    if "character" not in st.session_state:
+        st.session_state["character"] = {
+            "Name": "",
+            "Age": "",
+            "Pronouns": "",
+            "Personality": "",
+            "Traits": "",
+        }
+
     # OpenAI API init
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
@@ -102,11 +111,19 @@ def main():
                     for result in context_results
                 ])
 
+                # Add character details to the prompt
+                character_description = "\n".join([
+                    f"{key}: {value}" for key, value in st.session_state["character"].items() if value.strip()
+                ])
+                character_section = f"\n\nCharacter Details:\n{character_description}" if character_description else ""
+
+                # Combine everything into the prompt
                 full_prompt = (
                     f"Here is some related context that might help:\n{context_string}\n\n"
                     f"User Query: {prompt}\n\n"
                     f"Mood Keywords: {st.session_state['mood_keywords']}\n\n"
-                    f"Please write in an {st.session_state['formality_level']} tone\n\n"
+                    f"Please write in an {st.session_state['formality_level']} tone."
+                    f"{character_section}\n\n"
                     f"Assistant:"
                 )
 
@@ -147,6 +164,26 @@ def main():
             label="😊 Any keywords for mood?",
             max_chars=200,
             key="mood_keywords")
+
+        with st.expander("Character Building", expanded=False):
+            st.text("Create a character using the template below:")
+
+            # input fields for character
+            st.session_state["character"]["Name"] = st.text_input("Name", st.session_state["character"]["Name"])
+            st.session_state["character"]["Age"] = st.text_input("Age", st.session_state["character"]["Age"])
+            st.session_state["character"]["Pronouns"] = st.text_input("Pronouns", st.session_state["character"]["Pronouns"])
+            st.session_state["character"]["Personality"] = st.text_area("Personality", st.session_state["character"]["Personality"], height=100)
+            st.session_state["character"]["Traits"] = st.text_area("Traits", st.session_state["character"]["Traits"], height=100)
+
+            # character summary
+            st.subheader("Character Summary")
+            for key, value in st.session_state["character"].items():
+                st.write(f"**{key}:** {value}")
+
+            # clear all fields
+            if st.button("Clear Character"):
+                for key in st.session_state["character"]:
+                    st.session_state["character"][key] = ""
 
 if __name__ == "__main__":
     main()
