@@ -93,13 +93,14 @@ def main():
         )
 
     with chat_tab:
-
         # Chat messages container
-        chat_container = st.container()
+        global chat_container 
+        chat_container = st.container();
         with chat_container:
             for i, message in enumerate(st.session_state['chat_history']):
                 with st.chat_message(message["role"]):
                     st.markdown(message["content"])
+                
 
         # Chat input
         user_input = st.chat_input("Send a message!")
@@ -144,21 +145,18 @@ def main():
                     # Append response to chat history
                     st.session_state['chat_history'].append({"role": "assistant", "content": response_text})
 
-            # Feedback form placed inside the container directly under assistant's response
-            with chat_container:
-                st.markdown("---")  # Optional visual separator
-                with st.form("feedback_form"):
-                    streamlit_feedback(
-                        feedback_type="thumbs", 
-                        optional_text_label="[Optional]",
-                        align="flex-start",
-                        key="fb_k"
-                    )
-                    st.form_submit_button("Save feedback", on_click=fbcb)
+                    # Feedback form placed inside the container directly under assistant's response
+                    with chat_container:
+                        with st.form(f"feedback_form"):
+                            streamlit_feedback(
+                                feedback_type="thumbs", 
+                                optional_text_label="[Optional]",
+                                align="flex-start",
+                                key="fb_k"
+                            )
+                            st.form_submit_button("Save feedback", on_click=fbcb)
             
             init_chat_sidebar()
-
-
 
     with settings_tab:
         # st.write("Test")
@@ -243,7 +241,19 @@ def refine_prompt_with_feedback(feedback, client):
     refined_response = response.choices[0].message.content
 
     # Update the previous assistant message with "(Refined)" tag
-    st.session_state.chat_history[message_id]["content"] = f"**(Refined)** {refined_response}"
+    # st.session_state.chat_history[message_id]["content"] = f"**(Refined)** {refined_response}"
+    st.session_state["chat_history"].append({"role": "assistant", "content": f"**(Refined)** {refined_response}"})
+
+    with chat_container:
+        with st.form(f"feedback_form"):
+            streamlit_feedback(
+                feedback_type="thumbs", 
+                optional_text_label="[Optional]",
+                align="flex-start",
+                key="fb_k"
+            )
+            st.form_submit_button("Save feedback", on_click=fbcb)
+    
 
 # feedback callback
 def fbcb():
@@ -259,13 +269,15 @@ def init_chat_sidebar():
         if not st.session_state["cur_msg_history"]:
             st.write("Nothing here yet :(")
         else:
-            for idx, message in enumerate(st.session_state["cur_msg_history"]):
-                # st.warning(f"{idx, message}")
+            reversed_msg_history = st.session_state["cur_msg_history"]
+            reversed_msg_history.reverse()
+
+            for idx, message in enumerate(reversed_msg_history):
                 expander_label = ""
                 if idx == 0:
                     expander_label = "Initial Message"
                 else:
-                    expander_label = f"Revision {idx+1}"
+                    expander_label = f"Revision {idx}"
                 
                 with st.expander(expander_label):
                     formatted_feedback = f"{message['feedback']['score']} {message['feedback']['text']}"
@@ -279,9 +291,6 @@ def init_chat_sidebar():
             for result in st.session_state["cur_msg_context"]:
                 with st.expander(f"{result['sentence']}"):
                     st.caption(f'from "{result["story_title"]}"')
-
-
-
 
 if __name__ == "__main__":
     main()
