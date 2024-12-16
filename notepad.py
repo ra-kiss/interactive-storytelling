@@ -95,10 +95,13 @@ def main():
             for message in st.session_state['chat_history']:
                 with st.chat_message(message["role"]):
                     st.markdown(message["content"])
-                #if "feedback" in message:
-                #    st.write(f"Feedback: {message['feedback']}")
+                if "feedback" in message:
+                    st.markdown(f"<span style='color: red;'>Feedback: {message['feedback']}</span>", unsafe_allow_html=True)
                 #else:
                 #    st.write("Feedback: N/A")
+                if message["role"] == "assistant":
+                    if st.button("🔄 Refine", key=f"refine_{message}"):
+                        refine_prompt_with_feedback("User requested refinement.", client)
 
         # React to user input via OpenAI API
         if prompt := st.chat_input("🗨️ Send a message!"):
