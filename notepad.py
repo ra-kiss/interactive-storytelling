@@ -95,10 +95,10 @@ def main():
             for message in st.session_state['chat_history']:
                 with st.chat_message(message["role"]):
                     st.markdown(message["content"])
-                if "feedback" in message:
-                    st.write(f"Feedback: {message['feedback']}")
-                else:
-                    st.write("Feedback: N/A")
+                #if "feedback" in message:
+                #    st.write(f"Feedback: {message['feedback']}")
+                #else:
+                #    st.write("Feedback: N/A")
 
         # React to user input via OpenAI API
         if prompt := st.chat_input("🗨️ Send a message!"):
@@ -196,10 +196,43 @@ def main():
                 for key in st.session_state["character"]:
                     st.session_state["character"][key] = ""
 
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
+# refine prompt
+def refine_prompt_with_feedback(feedback, client):
+    if not feedback:
+        return
+
+    # get the last message
+    message_id = len(st.session_state.chat_history) - 1
+    if message_id < 0 or st.session_state.chat_history[message_id]["role"] != "assistant":
+        return
+
+    last_response = st.session_state.chat_history[message_id]["content"]
+
+    # update prompt with feedback
+    refined_prompt = f"The user provided feedback: {feedback}. Please refine the previous response accordingly.\n\n" \
+                     f"Previous Response: {last_response}\n\nRefined Response:"
+
+    # call openai api with refined prompt
+    response = client.chat.completions.create(
+        model=st.session_state["openai_model"],
+        messages=[
+            {"role": "system", "content": "You are an AI that refines responses based on user feedback."},
+            {"role": "assistant", "content": refined_prompt}
+        ]
+    )
+
+    # extract refined response from api response
+    refined_response = response.choices[0].message.content
+    st.session_state.chat_history.append({"role": "assistant", "content": refined_response})
+
+# feedback callback
 def fbcb():
     message_id = len(st.session_state.chat_history) - 1
     if message_id >= 0:
         st.session_state.chat_history[message_id]["feedback"] = st.session_state.fb_k
+        refine_prompt_with_feedback(st.session_state.fb_k, client)
 
 if __name__ == "__main__":
     main()
