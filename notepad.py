@@ -29,7 +29,7 @@ def main():
     notepad_tab, chat_tab, settings_tab = st.tabs(["Notepad 🗒️", "Chat 💬", "Settings ⚙️"])
     
     with notepad_tab:
-        render_notepad_tab()
+        render_notepad_tab(client)
     
     with chat_tab:
         render_chat_tab(client)
@@ -48,7 +48,7 @@ def initialize_session_state():
         st.session_state["chat_history"] = []
     
     if "openai_model" not in st.session_state:
-        st.session_state["openai_model"] = "gpt-3.5-turbo"
+        st.session_state["openai_model"] = "gpt-4o"
     
     if "cur_msg_context" not in st.session_state:
         st.session_state["cur_msg_context"] = []
@@ -79,13 +79,20 @@ def initialize_session_state():
     if "upload_key" not in st.session_state:
         st.session_state["upload_key"] = 0
 
-def render_notepad_tab():
+########################################
+#################### RENDER AND RELATED FUNCTIONS
+########################################
+
+def render_notepad_tab(client):
     """
     Renders the Notepad tab, which includes functionalities to save, load, clear,
     and edit text in a notepad-like interface.
+
+    Args:
+        client (OpenAI): The initialized OpenAI client for generating responses.
     """
-    # Create three columns for Save, Load, and Clear functionalities
-    col1, col2, col3 = st.columns([2, 2, 1])
+    # Create four columns for Save, Load, Clear, and Autocomplete functionalities
+    col1, col2, col3, col4 = st.columns([2, 2, 1, 1])
 
     # Save Expander
     with col1:
@@ -114,11 +121,46 @@ def render_notepad_tab():
                 except Exception as e:
                     st.error(f"Error loading file: {e}")
 
-    # Clear Button
+    # Clear Expander
     with col3:
-        if st.button("🗑️ Clear Notepad", key="clear_notepad"):
-            st.session_state['notepad'] = ""
-            st.info("Notepad cleared.")
+        with st.expander("🗑️ Clear Notepad"):
+            if st.button("Confirm", key="clear_notepad"):
+                st.session_state['notepad'] = ""
+                st.info("Notepad cleared.")
+
+    # Autocomplete Expander
+    with col4:
+        with st.expander("✨ Autocomplete"):
+            if st.button("Confirm"):
+                # Call OpenAI API with the current notepad content, context and custom prompt
+                context_results = retrieve(st.session_state['notepad'], st.session_state["retrieve_top_k"])
+                context_string = "\n".join([
+                                f"- Sentence: {result['sentence']} (from '{result['story_title']}')"
+                                for result in context_results
+                            ])
+                full_prompt = (
+                                f"You are an AI which is designed to autocomplete sentences in a story."
+                                f"The current content of the story is as follows: {st.session_state['notepad']}\n\n"
+                                f"Context:\n{context_string}\n\n"
+                                f"Respond in {st.session_state['formality_level']} tone. "
+                                f"Keywords: {st.session_state['mood_keywords']} "
+                                f"Characters: {json.dumps(st.session_state['characters'])}"
+                                f"It is crucial that you output only the completion of the last sentence, or"
+                                f"if the last sentence is finished, it is crucial that you continue the story with only one new sentence."
+                            )
+                print("\n\n",full_prompt,"\n\n")
+                try:
+                    response = client.chat.completions.create(
+                        model=st.session_state["openai_model"],
+                        messages=[
+                            {"role": "system", "content": full_prompt}
+                        ]
+                    )
+                except Exception as e:
+                    st.error(f"Error communicating with OpenAI API: {e}")
+                    return
+                st.warning(response.choices[0].message.content)
+                # Add response to current notepad content
 
     # Notepad Text Area
     st.text_area(
@@ -348,6 +390,10 @@ def render_settings_tab():
                         st.write(f"- **{key}:** {value}")
             else:
                 st.info("No characters saved yet. Create one to get started!")
+
+########################################
+#################### HELPER FUNCTIONS
+########################################
 
 def refine_prompt_with_feedback(feedback, message_id, client):
     """
