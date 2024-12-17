@@ -314,7 +314,7 @@ def render_settings_tab():
                 "Age", st.session_state["current_character"]["Age"], key="char_age"
             )
             st.session_state["current_character"]["Pronouns"] = st.text_input(
-                "Pronouns", st.session_state["current_character"]["Pronouns"], key="char_pronouns"
+                "Pronouns", st.session_state["current_character"]["Pronouns"], key="char_pronouns", placeholder="(e.g.: he/him, she/her, they/them)"
             )
             st.session_state["current_character"]["Personality"] = st.text_area(
                 "Personality", st.session_state["current_character"]["Personality"], height=100, key="char_personality"
@@ -323,20 +323,32 @@ def render_settings_tab():
                 "Traits", st.session_state["current_character"]["Traits"], height=100, key="char_traits"
             )
             st.session_state["current_character"]["Additional Information"] = st.text_input(
-                "Additional Information", st.session_state["current_character"]["Additional Information"], key="char_additional_info"
+                "Additional Information", st.session_state["current_character"]["Additional Information"], key="char_additional_info", placeholder="(optional)"
             )
 
             # Button to save the current character
             if st.button("Save Character", key="save_character"):
-                if all(st.session_state["current_character"].values()):
+                # Check all required fields (exclude 'Additional Information')
+                required_fields_filled = all(
+                    value.strip()  # Check if not empty or whitespace
+                    for key, value in st.session_state["current_character"].items()
+                    if key != "Additional Information"
+                )
+
+                if required_fields_filled:
                     # Add current character to the list of characters
+                    if "characters" not in st.session_state:
+                        st.session_state["characters"] = []
                     st.session_state["characters"].append(st.session_state["current_character"].copy())
-                    # Clear current character fields
+
+                    # Clear all fields except 'Additional Information'
                     for key in st.session_state["current_character"]:
-                        st.session_state["current_character"][key] = ""
+                        if key != "Additional Information":
+                            st.session_state["current_character"][key] = ""
+
                     st.success("Character saved successfully!")
                 else:
-                    st.error("Please fill in all character fields before saving.")
+                    st.error("Please fill in all required character fields before saving.")
 
             # Button to clear all fields of the current character
             if st.button("Clear Current Character", key="clear_character"):
