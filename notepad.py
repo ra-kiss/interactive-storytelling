@@ -186,7 +186,7 @@ def main():
             max_chars=200,
             key="mood_keywords")
 
-        with st.expander("Character Building", expanded=False):
+        with st.expander("Character Builder", expanded=False):
             col1, col2 = st.columns([1.5, 1])
 
             with col1:
@@ -212,7 +212,8 @@ def main():
 
                 # add custom fields
                 st.markdown("---")
-                new_field = st.text_input("Add Custom Field")
+                st.text("Add Additional Fields:")
+                new_field = st.text_input("Custom Field Name")
                 if st.button("Add Field") and new_field.strip():
                     if new_field not in st.session_state["custom_fields"]:
                         st.session_state["custom_fields"].append(new_field)
