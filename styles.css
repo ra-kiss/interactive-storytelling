@@ -1,0 +1,13 @@
+/* Increase font size and change font weight of tab titles */
+button[role="tab"] {
+    padding-top: 10px; 
+    padding-bottom: 25px;
+    padding-left: 20px;
+    padding-right: 20px;     
+}
+
+/* Target all child elements within the tab buttons */
+button[role="tab"] * {
+    font-size: 20px !important;
+    font-weight: bold !important;
+}
