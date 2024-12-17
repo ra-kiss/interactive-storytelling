@@ -159,7 +159,7 @@ def render_notepad_tab(client):
                 except Exception as e:
                     st.error(f"Error communicating with OpenAI API: {e}")
                     return
-                st.warning(response.choices[0].message.content)
+                st.success(response.choices[0].message.content)
                 # Add response to current notepad content
 
     # Notepad Text Area
