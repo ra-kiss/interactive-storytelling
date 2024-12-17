@@ -44,9 +44,10 @@ def main():
             "Age": "",
             "Pronouns": "",
             "Personality": "",
-            "Traits": ""
+            "Traits": "",
+            "Additional Information": ""
         }
-    st.session_state.setdefault("custom_fields", [])
+    #st.session_state.setdefault("custom_fields", [])
 
     # OpenAI API init
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
@@ -202,22 +203,23 @@ def main():
                 st.session_state["current_character"]["Traits"] = st.text_area(
                     "Traits", st.session_state["current_character"]["Traits"], height=100
                 )
+                st.session_state["current_character"]["Additional Information"] = st.text_input("Additional Information", st.session_state["current_character"]["Additional Information"])
 
                 # custom fields
-                if st.session_state["custom_fields"]:
-                    st.markdown("---")
-                    st.subheader("Additional Information")
-                    for field in st.session_state["custom_fields"]:
-                        st.session_state["current_character"][field] = st.text_input(field, st.session_state["current_character"].get(field, ""))
+                #if st.session_state["custom_fields"]:
+                #    st.markdown("---")
+                #    st.subheader("Additional Information")
+                #    for field in st.session_state["custom_fields"]:
+                #        st.session_state["current_character"][field] = st.text_input(field, st.session_state["current_character"].get(field, ""))
 
                 # add custom fields
-                st.markdown("---")
-                st.text("Add Additional Fields:")
-                new_field = st.text_input("Custom Field Name")
-                if st.button("Add Field") and new_field.strip():
-                    if new_field not in st.session_state["custom_fields"]:
-                        st.session_state["custom_fields"].append(new_field)
-                        st.session_state["current_character"][new_field] = ""  # init new field
+                #st.markdown("---")
+                #st.text("Add Additional Fields:")
+                #new_field = st.text_input("Custom Field Name")
+                #if st.button("Add Field") and new_field.strip():
+                #    if new_field not in st.session_state["custom_fields"]:
+                #        st.session_state["custom_fields"].append(new_field)
+                #        st.session_state["current_character"][new_field] = ""  # init new field
 
                 # add character to list
                 if st.button("Save Character"):
