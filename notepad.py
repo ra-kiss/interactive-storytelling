@@ -46,6 +46,7 @@ def main():
             "Personality": "",
             "Traits": ""
         }
+    st.session_state.setdefault("custom_fields", [])
 
     # OpenAI API init
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
@@ -202,10 +203,20 @@ def main():
                     "Traits", st.session_state["current_character"]["Traits"], height=100
                 )
 
-                # character summary
-                #st.subheader("Character Summary")
-                #for key, value in st.session_state["current_character"].items():
-                #    st.write(f"**{key}:** {value}")
+                # custom fields
+                if st.session_state["custom_fields"]:
+                    st.markdown("---")
+                    st.subheader("Additional Information")
+                    for field in st.session_state["custom_fields"]:
+                        st.session_state["current_character"][field] = st.text_input(field, st.session_state["current_character"].get(field, ""))
+
+                # add custom fields
+                st.markdown("---")
+                new_field = st.text_input("Add Custom Field")
+                if st.button("Add Field") and new_field.strip():
+                    if new_field not in st.session_state["custom_fields"]:
+                        st.session_state["custom_fields"].append(new_field)
+                        st.session_state["current_character"][new_field] = ""  # init new field
 
                 # add character to list
                 if st.button("Save Character"):
@@ -244,6 +255,14 @@ def main():
                         file_name="characters.json",
                         mime="application/json"
                     )
+
+                uploaded_file = st.file_uploader("Upload JSON File", type=["json"])
+                if uploaded_file is not None:
+                    try:
+                        st.session_state["characters"] = json.load(uploaded_file)
+                        st.success("Characters loaded successfully!")
+                    except Exception as e:
+                        st.error(f"Error loading file: {e}")
 
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
