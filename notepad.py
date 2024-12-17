@@ -183,7 +183,8 @@ def render_chat_tab(client):
     chat_container = st.container()
     with chat_container:
         for message in st.session_state['chat_history']:
-            with st.chat_message(message["role"]):
+            avatar = "🤖" if message['role'] == "assistant" else "😊"
+            with st.chat_message(message["role"], avatar=avatar):
                 st.markdown(message["content"])
     
     # Chat input from the user
@@ -206,12 +207,12 @@ def handle_user_input(user_input, client):
     # Append user message to chat history
     st.session_state['chat_history'].append({"role": "user", "content": user_input})
     with chat_container:
-        with st.chat_message("user"):
+        with st.chat_message("user", avatar="😊"):
             st.markdown(user_input)
 
     # Assistant response
     with chat_container:
-        with st.chat_message("assistant"):
+        with st.chat_message("assistant", avatar="🤖"):
             response_placeholder = st.empty()  # Placeholder for dynamic response
 
             # Retrieve relevant context
