@@ -2,7 +2,7 @@
 
 ## Overview
 
-NLP final project
+This project introduces an application for collaborative storytelling, where users and a Large Language Model (LLM) co-create narratives in an interactive environment. It combines a notepad-style application with a chat interface and a character builder, allowing users to seamlessly develop stories and characters. The system dynamically adapts to user input, utilizing Retrieval-Augmented Generation (RAG) to suggest contextually relevant story elements. With interactive feedback mechanisms, users can refine suggestions and explore creative possibilities, enhancing their storytelling experience.
 
 ## Setup Instructions
 
