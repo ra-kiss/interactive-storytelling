@@ -259,14 +259,14 @@ def handle_user_input(user_input, client):
 
             # Add feedback form below the assistant's response
             with chat_container:
-                with st.form(f"feedback_form_{len(st.session_state['chat_history'])}", clear_on_submit=True):
+                with st.form(f"feedback_form", clear_on_submit=True):
                     streamlit_feedback(
                         feedback_type="thumbs", 
                         optional_text_label="[Optional]",
                         align="flex-start",
-                        key=f"fb_k_{len(st.session_state['chat_history'])}"
+                        key=f"fb_k"
                     )
-                    st.form_submit_button("Save feedback", on_click=fbcb, args=(len(st.session_state['chat_history'])-1, client))
+                    st.form_submit_button("Save feedback", on_click=fbcb, args=[client])
 
     # Initialize or update the chat sidebar with feedback and context
     init_chat_sidebar()
@@ -452,16 +452,16 @@ def refine_prompt_with_feedback(feedback, message_id, client):
 
     # Re-render the feedback form for the refined response
     with chat_container:
-        with st.form(f"feedback_form_{len(st.session_state['chat_history'])}", clear_on_submit=True):
+        with st.form(f"feedback_form", clear_on_submit=True):
             streamlit_feedback(
                 feedback_type="thumbs", 
                 optional_text_label="[Optional]",
                 align="flex-start",
-                key=f"fb_k_{len(st.session_state['chat_history'])}"
+                key=f"fb_k"
             )
-            st.form_submit_button("Save feedback", on_click=fbcb, args=(len(st.session_state['chat_history'])-1, client))
+            st.form_submit_button("Save feedback", on_click=fbcb, args=[client])
 
-def fbcb(message_id, client):
+def fbcb(client):
     """
     Callback function triggered when the feedback form is submitted.
     It saves the feedback and initiates the prompt refinement process.
@@ -470,11 +470,11 @@ def fbcb(message_id, client):
         message_id (int): The ID of the message being refined.
         client (OpenAI): The initialized OpenAI client for generating responses.
     """
-    feedback_key = f"fb_k_{message_id}"
-    if feedback_key in st.session_state:
-        feedback = st.session_state[feedback_key]
-        st.session_state.chat_history[message_id]["feedback"] = feedback
-        refine_prompt_with_feedback(feedback, message_id, client)
+    message_id = len(st.session_state.chat_history) - 1
+    if message_id >= 0:
+        # feedback = st.session_state[feedback_key]
+        st.session_state.chat_history[message_id]["feedback"] = st.session_state["fb_k"]
+        refine_prompt_with_feedback(st.session_state["fb_k"], message_id, client)
         init_chat_sidebar()
 
 def init_chat_sidebar():    
